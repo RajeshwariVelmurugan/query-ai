@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.pytest_cache/
+app.log
+*.db
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Project specific
+NLP-SQL-BACKEND/NLP-SQL-BACKEND/app.log
+NLP-SQL-BACKEND/NLP-SQL-BACKEND/.env
+NLP-SQL-FRONTEND/.env
+NLP-SQL-FRONTEND/dist/
