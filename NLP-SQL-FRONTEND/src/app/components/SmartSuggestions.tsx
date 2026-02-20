@@ -1,17 +1,61 @@
+import { useState, useEffect } from "react";
 import { Sparkles } from "lucide-react";
+import { api } from "../services/api";
 
 interface SmartSuggestionsProps {
   onSelect: (suggestion: string) => void;
 }
 
+const FALLBACK_SUGGESTIONS = [
+  "Show revenue by month",
+  "Top 5 products by sales",
+  "Compare last 2 years",
+  "Users with no orders",
+  "Average order value",
+];
+
 export function SmartSuggestions({ onSelect }: SmartSuggestionsProps) {
-  const suggestions = [
-    "Show revenue by month",
-    "Top 5 products by sales",
-    "Compare last 2 years",
-    "Users with no orders",
-    "Average order value",
-  ];
+  const [suggestions, setSuggestions] = useState<string[]>(FALLBACK_SUGGESTIONS);
+
+  useEffect(() => {
+    const generateSuggestions = async () => {
+      const tenantId = localStorage.getItem("tenant_id");
+      if (!tenantId) return;
+
+      try {
+        const schema = await api.getSchema(tenantId);
+        if (schema && schema.tables && schema.tables.length > 0) {
+          const dynamicSuggestions: string[] = [];
+          const tables = schema.tables.slice(0, 5);
+
+          for (const table of tables) {
+            const tableName = table.name || table;
+            dynamicSuggestions.push(`Show all records from ${tableName}`);
+          }
+
+          // Add count-based suggestions
+          if (tables.length > 0) {
+            const firstTable = tables[0].name || tables[0];
+            dynamicSuggestions.push(`Count total rows in ${firstTable}`);
+          }
+
+          if (tables.length > 1) {
+            const secondTable = tables[1].name || tables[1];
+            dynamicSuggestions.push(`Show first 10 rows from ${secondTable}`);
+          }
+
+          if (dynamicSuggestions.length > 0) {
+            setSuggestions(dynamicSuggestions.slice(0, 5));
+          }
+        }
+      } catch (err) {
+        // Keep fallback suggestions on error
+        console.error("Failed to generate smart suggestions", err);
+      }
+    };
+
+    generateSuggestions();
+  }, []);
 
   return (
     <div className="space-y-2">

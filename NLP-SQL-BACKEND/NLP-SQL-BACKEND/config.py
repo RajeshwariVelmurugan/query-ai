@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from typing import Optional
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
@@ -9,6 +10,9 @@ class Settings(BaseSettings):
     
     # Encryption
     ENCRYPTION_KEY: str
+    
+    # Google Auth
+    GOOGLE_CLIENT_ID: Optional[str] = None
     
     # Environment
     ENVIRONMENT: str = "development"
@@ -22,6 +26,11 @@ class Settings(BaseSettings):
     
     # Cache settings
     CACHE_TTL_SECONDS: int = 300
+    
+    # Auth settings
+    SECRET_KEY: str = "your-secret-key-change-it-in-production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 43200 # 30 days
     
     # Database connection pool settings
     DB_POOL_SIZE: int = 5

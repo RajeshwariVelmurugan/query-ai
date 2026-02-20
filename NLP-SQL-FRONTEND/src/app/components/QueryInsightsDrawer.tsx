@@ -84,11 +84,12 @@ export function QueryInsightsDrawer({
           <Lightbulb className="w-4 h-4 text-[#4F46E5] mt-0.5 flex-shrink-0" />
           <div>
             <p className="text-xs text-white font-medium mb-1">
-              Optimization Suggestion
+              {cached ? "Performance Note" : "Optimization Tip"}
             </p>
             <p className="text-xs text-white/70 leading-relaxed">
-              Add index on 'created_at' for faster date filtering. Estimated
-              improvement: 3x faster.
+              {cached
+                ? "This query was served from cache — near-instant response with zero database load."
+                : "This query hit the database directly. Repeated queries will be automatically cached for faster responses."}
             </p>
           </div>
         </div>

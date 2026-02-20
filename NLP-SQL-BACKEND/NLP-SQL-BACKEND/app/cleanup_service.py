@@ -1,3 +1,5 @@
+from typing import Optional
+from sqlalchemy.orm import Session
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,9 +15,9 @@ class CleanupService:
         self.cache_service = cache_service
         logger.info("CleanupService initialized")
     
-    def cleanup_tenant(self, tenant_id: str) -> bool:
+    def cleanup_tenant(self, tenant_id: str, user_id: Optional[int] = None, db: Optional[Session] = None) -> bool:
         """Perform complete cleanup for a tenant"""
-        logger.info(f"Starting cleanup for tenant {tenant_id}")
+        logger.info(f"Starting cleanup for tenant {tenant_id} (user {user_id})")
         
         try:
             logger.info(f"Step 1/3: Clearing cache...")
@@ -25,7 +27,7 @@ class CleanupService:
             self.schema_service.remove_schema(tenant_id)
             
             logger.info(f"Step 3/3: Closing database connection...")
-            self.db_service.close_connection(tenant_id)
+            self.db_service.close_connection(tenant_id, user_id=user_id, db=db)
             
             logger.info(f"✅ Complete cleanup finished for tenant {tenant_id}")
             return True
@@ -34,11 +36,11 @@ class CleanupService:
             logger.error(f"❌ Cleanup failed for tenant {tenant_id}: {e}")
             return False
     
-    def cleanup_all(self):
+    def cleanup_all(self, db: Optional[Session] = None):
         """Cleanup ALL tenants"""
         tenants = self.db_service.get_active_connections()
         results = {}
         for tenant_id in tenants:
-            results[tenant_id] = self.cleanup_tenant(tenant_id)
+            results[tenant_id] = self.cleanup_tenant(tenant_id, user_id=None, db=db)
         logger.info(f"Cleaned up {len(tenants)} tenants")
         return results

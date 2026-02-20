@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from sqlalchemy import text
 import logging
@@ -7,6 +8,9 @@ import re
 from typing import List, Dict, Any, Optional
 
 from dependencies import get_db_service, get_schema_service, get_cache_service, get_query_service
+from app.database import get_db
+from app.auth_service import get_current_user
+from app.models import User
 
 router = APIRouter(prefix="/api", tags=["query"])
 logger = logging.getLogger(__name__)
@@ -16,7 +20,7 @@ class AskRequest(BaseModel):
     question: str
 
 class AskResponse(BaseModel):
-    answer: List[Dict[str, Any]]
+    answer: List[Dict[Any, Any]]
     sql: Optional[str]
     execution_time: str
     cache_hit: bool
@@ -25,10 +29,17 @@ class AskResponse(BaseModel):
 @router.post("/ask", response_model=AskResponse)
 async def ask_question(
     request: AskRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
     query_service=Depends(get_query_service)
 ):
     try:
-        result = query_service.ask(request.tenant_id, request.question)
+        result = query_service.ask(
+            tenant_id=request.tenant_id, 
+            question=request.question, 
+            user_id=current_user.id,
+            db=db
+        )
         
         return AskResponse(
             answer=result.get("answer", []),
@@ -47,11 +58,17 @@ async def ask_question(
 @router.get("/schema/{tenant_id}")
 async def get_tenant_schema(
     tenant_id: str,
-    schema_service=Depends(get_schema_service)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    db_service = Depends(get_db_service),
+    schema_service = Depends(get_schema_service)
 ):
+    # Verify ownership via db_service
+    engine = db_service.get_engine(tenant_id, user_id=current_user.id, db=db)
+    if not engine:
+        raise HTTPException(status_code=404, detail="Tenant not found or access denied")
+        
     schema = schema_service.get_schema(tenant_id)
-    if not schema:
-        raise HTTPException(status_code=404, detail="Tenant not found")
     return {"tenant_id": tenant_id, "schema": schema}
 
 @router.get("/cache/stats")
@@ -63,15 +80,31 @@ async def get_cache_stats(
 @router.get("/stats/{tenant_id}")
 async def get_tenant_stats(
     tenant_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    db_service = Depends(get_db_service),
     cache_service=Depends(get_cache_service)
 ):
     """Get real-time statistics for a specific tenant"""
+    # Verify ownership
+    engine = db_service.get_engine(tenant_id, user_id=current_user.id, db=db)
+    if not engine:
+        raise HTTPException(status_code=404, detail="Tenant not found or access denied")
+        
     return cache_service.get_tenant_stats(tenant_id)
 
 @router.get("/history/{tenant_id}")
 async def get_tenant_history(
     tenant_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    db_service = Depends(get_db_service),
     cache_service=Depends(get_cache_service)
 ):
     """Get recent query history for a specific tenant"""
+    # Verify ownership
+    engine = db_service.get_engine(tenant_id, user_id=current_user.id, db=db)
+    if not engine:
+        raise HTTPException(status_code=404, detail="Tenant not found or access denied")
+        
     return cache_service.get_tenant_history(tenant_id)

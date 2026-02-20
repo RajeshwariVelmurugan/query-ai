@@ -10,8 +10,9 @@ export default function DatabaseConnectionPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
+    db_type: "postgresql",
     host: "",
-    port: "",
+    port: "5432",
     database: "",
     username: "",
     password: "",
@@ -25,11 +26,14 @@ export default function DatabaseConnectionPage() {
     try {
       const response = await api.connectDatabase({
         ...formData,
-        db_type: "postgresql", // Defaulting to postgresql as per the form placeholders
       });
 
       if (response.tenant_id) {
         localStorage.setItem("tenant_id", response.tenant_id);
+        localStorage.setItem("db_type", formData.db_type);
+        localStorage.setItem("db_host", formData.host);
+        localStorage.setItem("db_port", formData.port);
+        localStorage.setItem("db_name", formData.database);
         navigate("/app");
       }
     } catch (err: any) {
@@ -60,6 +64,30 @@ export default function DatabaseConnectionPage() {
 
         <GlassCard className="p-8">
           <form onSubmit={handleConnect} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-white/90 mb-2">
+                Database Type
+              </label>
+              <select
+                value={formData.db_type}
+                onChange={(e) => {
+                  const dbType = e.target.value;
+                  setFormData((prev) => ({
+                    ...prev,
+                    db_type: dbType,
+                    port: dbType === "mongodb" ? "27017" : (dbType === "mysql" ? "3306" : "5432"),
+                    username: dbType === "mongodb" ? "" : prev.username,
+                    password: dbType === "mongodb" ? "" : prev.password,
+                  }));
+                }}
+                className="w-full h-11 px-4 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/50 appearance-none cursor-pointer"
+              >
+                <option value="postgresql" className="bg-[#0F172A]">PostgreSQL</option>
+                <option value="mysql" className="bg-[#0F172A]">MySQL</option>
+                <option value="mongodb" className="bg-[#0F172A]">MongoDB</option>
+              </select>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-white/90 mb-2">
                 Host
@@ -104,21 +132,21 @@ export default function DatabaseConnectionPage() {
 
             <div>
               <label className="block text-sm font-medium text-white/90 mb-2">
-                Username
+                Username {formData.db_type === "mongodb" && <span className="text-white/40 font-normal ml-1">(Optional)</span>}
               </label>
               <input
                 type="text"
                 value={formData.username}
                 onChange={(e) => handleChange("username", e.target.value)}
                 className="w-full h-11 px-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/50"
-                placeholder="postgres"
-                required
+                placeholder={formData.db_type === "mongodb" ? "admin" : "postgres"}
+                required={formData.db_type !== "mongodb"}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-white/90 mb-2">
-                Password
+                Password {formData.db_type === "mongodb" && <span className="text-white/40 font-normal ml-1">(Optional)</span>}
               </label>
               <input
                 type="password"
@@ -126,7 +154,7 @@ export default function DatabaseConnectionPage() {
                 onChange={(e) => handleChange("password", e.target.value)}
                 className="w-full h-11 px-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/50"
                 placeholder="••••••••"
-                required
+                required={formData.db_type !== "mongodb"}
               />
             </div>
 

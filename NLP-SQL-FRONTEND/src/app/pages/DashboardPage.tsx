@@ -28,7 +28,7 @@ export default function DashboardPage() {
         setQueries(historyData);
         setStats({
           ...statsData,
-          avg_latency: statsData.total_queries > 0 ? "0.12s" : "0.00s"
+          avg_latency: statsData.avg_latency || "—",
         });
       } catch (err) {
         console.error("Failed to fetch dashboard data", err);

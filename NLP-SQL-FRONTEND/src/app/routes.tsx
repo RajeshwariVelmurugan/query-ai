@@ -7,6 +7,7 @@ import AskQueryPage from "./pages/AskQueryPage";
 import CacheAnalyticsPage from "./pages/CacheAnalyticsPage";
 import PerformancePage from "./pages/PerformancePage";
 import SettingsPage from "./pages/SettingsPage";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 export const router = createBrowserRouter([
   {
@@ -15,11 +16,19 @@ export const router = createBrowserRouter([
   },
   {
     path: "/connect",
-    Component: DatabaseConnectionPage,
+    element: (
+      <ProtectedRoute>
+      <DatabaseConnectionPage />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/app",
-    Component: DashboardLayout,
+    element: (
+      <ProtectedRoute>
+      <DashboardLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,

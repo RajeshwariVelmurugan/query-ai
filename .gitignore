@@ -2,32 +2,49 @@
 __pycache__/
 *.py[cod]
 *$py.class
-.env
 .venv
-env/
 venv/
 ENV/
-env.bak/
-venv.bak/
-.pytest_cache/
-app.log
 *.db
+.pytest_cache/
+.mypy_cache/
+coverage/
+htmlcov/
+*.log
 
-# Node
+# Node / Vite
 node_modules/
 dist/
 dist-ssr/
+build/
+out/
+.vercel
+.turbo
 *.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.development
+.env.production
+.env.local
+.env.*.local
+
+# IDEs & OS
 .vscode/
 .idea/
-
-# OS
 .DS_Store
 Thumbs.db
 desktop.ini
+*.swp
 
 # Project specific
 NLP-SQL-BACKEND/NLP-SQL-BACKEND/app.log
 NLP-SQL-BACKEND/NLP-SQL-BACKEND/.env
 NLP-SQL-FRONTEND/.env
-NLP-SQL-FRONTEND/dist/
+verify_mongodb_nlp.py
+seed_mongodb.py
+test_mongo_tenant.db

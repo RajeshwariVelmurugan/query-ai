@@ -33,7 +33,48 @@ export default function AskQueryPage() {
       return;
     }
     setTenantId(storedTenantId);
+
+    // Load persisted history from backend
+    const loadHistory = async () => {
+      try {
+        // Load local history first for instant UX
+        const savedHistory = localStorage.getItem(`query_history_${storedTenantId}`);
+        if (savedHistory) {
+          setHistory(JSON.parse(savedHistory));
+        }
+
+        // Load saved last result
+        const savedResult = localStorage.getItem(`last_query_result_${storedTenantId}`);
+        if (savedResult) {
+          setResult(JSON.parse(savedResult));
+        }
+
+        const historyData = await api.getTenantHistory(storedTenantId);
+        const mappedHistory = historyData.map((item: any, idx: number) => ({
+          id: item.id || idx,
+          question: item.query,
+          timestamp: new Date(item.timestamp).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          cached: false,
+        }));
+
+        setHistory(mappedHistory);
+        localStorage.setItem(`query_history_${storedTenantId}`, JSON.stringify(mappedHistory));
+      } catch (err) {
+        console.error("Failed to load history", err);
+      }
+    };
+    loadHistory();
   }, [navigate]);
+
+  // Save result to localStorage whenever it changes
+  useEffect(() => {
+    if (result && tenantId) {
+      localStorage.setItem(`last_query_result_${tenantId}`, JSON.stringify(result));
+    }
+  }, [result, tenantId]);
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
@@ -52,20 +93,30 @@ export default function AskQueryPage() {
         sql: response.sql || "",
         cached: response.cache_hit,
         executionTime: response.execution_time,
-        confidence: 95, // Backend doesn't return confidence yet, defaulting to 95
+        confidence: response.cache_hit
+          ? 98
+          : response.answer && response.answer.length > 0
+            ? 85
+            : response.error
+              ? 30
+              : 70,
         data: response.answer,
       };
 
       setResult(newResult);
-      setHistory((prev: any[]) => [
-        {
-          id: Date.now(),
-          question,
-          timestamp: "Just now",
-          cached: response.cache_hit,
-        },
-        ...prev.slice(0, 4),
-      ]);
+      setHistory((prev: any[]) => {
+        const updatedHistory = [
+          {
+            id: Date.now(),
+            question,
+            timestamp: "Just now",
+            cached: response.cache_hit,
+          },
+          ...prev.filter(h => h.question !== question).slice(0, 9),
+        ];
+        localStorage.setItem(`query_history_${tenantId}`, JSON.stringify(updatedHistory));
+        return updatedHistory;
+      });
 
       if (response.error) {
         setError(response.error);

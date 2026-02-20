@@ -10,13 +10,39 @@ class PromptBuilder:
         schema_text = self._format_schema(schema)
         db_type = schema.get("db_type", "SQL")
 
-        prompt = f"""
+        if db_type == "mongodb":
+            prompt = f"""
+You generate MongoDB aggregation pipelines for a MongoDB database.
+
+STRICT RULES:
+- Generate ONLY a JSON array representing the aggregation pipeline.
+- Example: [{{ "$match": {{ "status": "A" }} }}, {{ "$group": {{ "_id": "$cust_id", "total": {{ "$sum": "$amount" }} }} }}]
+- Do NOT include 'db.collection.aggregate(' or anything outside the array.
+- Use ONLY collections and fields listed in the schema.
+- IMPORTANT: Fields are already available in the collection. Do NOT use $lookup to join a collection with itself.
+- Only use $lookup if the required information is strictly in a DIFFERENT collection.
+- Return ONLY the raw JSON array.
+- No explanations.
+- No markdown.
+- If required collections or fields are missing, return: []
+
+DATABASE SCHEMA:
+{schema_text}
+
+USER QUESTION:
+{question}
+"""
+        else:
+            prompt = f"""
 You generate SQL queries for a {db_type} database.
 
 STRICT RULES:
 - Generate ONLY a SELECT query.
 - Do NOT use INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE, GRANT, REVOKE.
 - Use ONLY tables and columns listed in the schema.
+- Always use clear table aliases (e.g., `FROM products p`).
+- When joining tables, ensure every column reference is prefixed with its table alias (e.g., `p.name` instead of `name`).
+- Verify that the column actually exists in the specific table it is being selected from.
 - If no LIMIT is present, add LIMIT 1000.
 - Return ONLY raw SQL.
 - No explanations.

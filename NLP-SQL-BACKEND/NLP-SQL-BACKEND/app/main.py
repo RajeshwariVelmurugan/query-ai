@@ -5,6 +5,12 @@ from datetime import datetime
 
 from app.tenant_router import router as tenant_router
 from app.query_router import router as query_router
+from app.auth_router import router as auth_router
+from app.database import engine, Base
+from app import models
+
+# Create system database tables
+Base.metadata.create_all(bind=engine)
 
 # Setup logging
 logging.basicConfig(
@@ -30,6 +36,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth_router)
 app.include_router(tenant_router)
 app.include_router(query_router)
 

@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 import uuid
 import logging
 import time
 
 from dependencies import get_db_service, get_schema_service, get_cleanup_service
-from core.encryption import encrypt_data, decrypt_data
+from app.database import get_db
+from app.auth_service import get_current_user
+from app.models import User
 
 router = APIRouter(prefix="/api", tags=["tenant"])
 logger = logging.getLogger(__name__)
@@ -30,28 +33,39 @@ class DisconnectResponse(BaseModel):
 @router.post("/connect-db", response_model=DBConnectResponse)
 async def connect_database(
     request: DBConnectRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
     db_service=Depends(get_db_service),
     schema_service=Depends(get_schema_service)
 ):
     """Connect to a database and prepare for queries"""
     try:
         tenant_id = str(uuid.uuid4())
-        logger.info(f"New connection request - assigning tenant_id: {tenant_id}")
+        logger.info(f"User {current_user.email} connecting - assigning tenant_id: {tenant_id}")
         
-        success = db_service.connect(tenant_id, request.dict())
+        success = db_service.connect(
+            tenant_id=tenant_id, 
+            credentials=request.dict(),
+            db=db,
+            user_id=current_user.id
+        )
         
         if not success:
             raise HTTPException(
-                status_code=400, 
+                status_code=status.HTTP_400_BAD_REQUEST, 
                 detail="Database connection failed. Check credentials and try again."
             )
         
-        schema = schema_service.extract_and_store_schema(tenant_id)
+        schema = schema_service.extract_and_store_schema(
+            tenant_id=tenant_id, 
+            user_id=current_user.id, 
+            db=db
+        )
         
         if not schema:
-            db_service.close_connection(tenant_id)
+            db_service.close_connection(tenant_id, user_id=current_user.id, db=db)
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Could not extract database schema. Check permissions."
             )
         
@@ -73,12 +87,14 @@ async def connect_database(
 @router.get("/health/{tenant_id}")
 async def check_tenant_health(
     tenant_id: str,
-    db_service=Depends(get_db_service)
+    db: Session = Depends(get_db),
+    db_service=Depends(get_db_service),
+    current_user: User = Depends(get_current_user) # Ensure only logged in users can check health
 ):
     """Actual database connectivity test for a specific tenant"""
-    engine = db_service.get_engine(tenant_id)
+    engine = db_service.get_engine(tenant_id, user_id=current_user.id, db=db)
     if not engine:
-        raise HTTPException(status_code=404, detail="Tenant not connected")
+        raise HTTPException(status_code=404, detail="Tenant not connected or access denied")
     
     try:
         from sqlalchemy import text
@@ -103,12 +119,20 @@ async def check_tenant_health(
 @router.delete("/disconnect/{tenant_id}", response_model=DisconnectResponse)
 async def disconnect_database(
     tenant_id: str,
-    cleanup_service=Depends(get_cleanup_service)
+    db: Session = Depends(get_db),
+    cleanup_service=Depends(get_cleanup_service),
+    current_user: User = Depends(get_current_user)
 ):
     """Disconnect database and cleanup all data"""
     try:
-        logger.info(f"Disconnect request for tenant {tenant_id}")
-        success = cleanup_service.cleanup_tenant(tenant_id)
+        logger.info(f"Disconnect request for tenant {tenant_id} from user {current_user.email}")
+        
+        # Verify ownership via get_engine before allowing cleanup
+        engine = db_service.get_engine(tenant_id, user_id=current_user.id, db=db)
+        if not engine:
+            raise HTTPException(status_code=404, detail="Tenant not found or access denied")
+            
+        success = cleanup_service.cleanup_tenant(tenant_id, user_id=current_user.id, db=db)
         
         if not success:
             raise HTTPException(

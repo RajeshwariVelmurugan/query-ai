@@ -28,6 +28,11 @@ DATABASE SCHEMA:
 {schema_text}
 
 STRICT RULES:
+- Analyze the DATABASE ERROR and fix the root cause.
+- Check specifically for:
+  * Table alias hallucinations (e.g., using `ali.col` when `ali` isn't defined).
+  * JOIN conditions using incorrect table names.
+  * Columns being selected from the wrong tables.
 - Generate ONLY a SELECT query.
 - Use ONLY tables and columns from the schema.
 - Return ONLY raw SQL.
