@@ -16,7 +16,7 @@ export default function DashboardLayout() {
     { icon: LayoutDashboard, label: "Dashboard", path: "/app" },
     { icon: MessageSquare, label: "Ask Query", path: "/app/query" },
     { icon: Database, label: "Cache Analytics", path: "/app/cache" },
-    { icon: TrendingUp, label: "Performance", path: "/app/performance" },
+    { icon: TrendingUp, label: "Insights", path: "/app/insights" },
     { icon: Settings, label: "Settings", path: "/app/settings" },
   ];
 

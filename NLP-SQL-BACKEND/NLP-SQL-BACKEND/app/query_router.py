@@ -10,7 +10,7 @@ from typing import List, Dict, Any, Optional
 from dependencies import get_db_service, get_schema_service, get_cache_service, get_query_service
 from app.database import get_db
 from app.auth_service import get_current_user
-from app.models import User
+from app.models import User, TenantConnection
 
 router = APIRouter(prefix="/api", tags=["query"])
 logger = logging.getLogger(__name__)
@@ -63,13 +63,27 @@ async def get_tenant_schema(
     db_service = Depends(get_db_service),
     schema_service = Depends(get_schema_service)
 ):
-    # Verify ownership via db_service
-    engine = db_service.get_engine(tenant_id, user_id=current_user.id, db=db)
-    if not engine:
-        raise HTTPException(status_code=404, detail="Tenant not found or access denied")
-        
+    # 1. Try to get schema from cache
     schema = schema_service.get_schema(tenant_id)
-    return {"tenant_id": tenant_id, "schema": schema}
+    
+    # 2. If not in memory (e.g. server restart), re-extract it
+    if schema is None:
+        logger.info(f"Schema not in memory for tenant {tenant_id}, re-extracting...")
+        schema = schema_service.extract_and_store_schema(tenant_id, current_user.id, db)
+    
+    # 3. Get connection metadata for UI context
+    conn_record = db.query(TenantConnection).filter(
+        TenantConnection.tenant_id == tenant_id,
+        TenantConnection.user_id == current_user.id
+    ).first()
+
+    return {
+        "tenant_id": tenant_id, 
+        "schema": schema,
+        "db_type": conn_record.db_type if conn_record else None,
+        "database_name": conn_record.database_name if conn_record else None,
+        "host": conn_record.host if conn_record else None
+    }
 
 @router.get("/cache/stats")
 async def get_cache_stats(

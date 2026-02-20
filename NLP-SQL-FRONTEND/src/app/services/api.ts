@@ -148,5 +148,24 @@ export const api = {
             headers: getAuthHeader(),
         });
         return handleResponse(response);
+    },
+
+    async getChartData(data: {
+        tenant_id: string;
+        table_name: string;
+        x_column: string;
+        y_column: string;
+        chart_type: string;
+        color?: string;
+    }) {
+        const response = await fetch(`${API_BASE_URL}/insights/chart-data`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeader(),
+            },
+            body: JSON.stringify(data),
+        });
+        return handleResponse(response);
     }
 };

@@ -50,3 +50,5 @@ seed_mongodb.py
 test_json_repair.py
 system_data.db
 test_mongo_tenant.db
+seed_postgres.py
+    

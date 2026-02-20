@@ -5,7 +5,7 @@ import DashboardLayout from "./pages/DashboardLayout";
 import DashboardPage from "./pages/DashboardPage";
 import AskQueryPage from "./pages/AskQueryPage";
 import CacheAnalyticsPage from "./pages/CacheAnalyticsPage";
-import PerformancePage from "./pages/PerformancePage";
+import InsightsPage from "./pages/InsightsPage";
 import SettingsPage from "./pages/SettingsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -18,7 +18,7 @@ export const router = createBrowserRouter([
     path: "/connect",
     element: (
       <ProtectedRoute>
-      <DatabaseConnectionPage />
+        <DatabaseConnectionPage />
       </ProtectedRoute>
     ),
   },
@@ -26,7 +26,7 @@ export const router = createBrowserRouter([
     path: "/app",
     element: (
       <ProtectedRoute>
-      <DashboardLayout />
+        <DashboardLayout />
       </ProtectedRoute>
     ),
     children: [
@@ -43,8 +43,8 @@ export const router = createBrowserRouter([
         Component: CacheAnalyticsPage,
       },
       {
-        path: "performance",
-        Component: PerformancePage,
+        path: "insights",
+        Component: InsightsPage,
       },
       {
         path: "settings",
