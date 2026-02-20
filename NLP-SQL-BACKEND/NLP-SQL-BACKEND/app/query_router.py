@@ -98,13 +98,25 @@ async def get_tenant_history(
     tenant_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    db_service = Depends(get_db_service),
-    cache_service=Depends(get_cache_service)
+    db_service = Depends(get_db_service)
 ):
-    """Get recent query history for a specific tenant"""
+    """Get recent query history for a specific tenant from database"""
     # Verify ownership
     engine = db_service.get_engine(tenant_id, user_id=current_user.id, db=db)
     if not engine:
-        raise HTTPException(status_code=404, detail="Tenant not found or access denied")
+        raise HTTPException(status_code=404, detail="Tenant not connected or access denied")
         
-    return cache_service.get_tenant_history(tenant_id)
+    from app.models import QueryHistory
+    history = db.query(QueryHistory).filter(
+        QueryHistory.tenant_id == tenant_id,
+        QueryHistory.user_id == current_user.id
+    ).order_by(QueryHistory.created_at.desc()).limit(20).all()
+
+    return [
+        {
+            "id": h.id,
+            "query": h.question, # Frontend expects 'query' to be the NL question
+            "sql": h.query_text,
+            "timestamp": h.created_at.isoformat()
+        } for h in history
+    ]

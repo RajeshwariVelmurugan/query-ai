@@ -1,6 +1,7 @@
 import time
 import logging
 import json
+from datetime import datetime
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 
@@ -10,6 +11,7 @@ from app.services.nlp.sql_validator import SQLValidator
 from app.services.nlp.mql_validator import MQLValidator
 from app.services.nlp.error_recovery import ErrorRecoveryService
 import pymongo
+from bson import ObjectId
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -122,18 +124,27 @@ class QueryService:
                 db_name = conn_record.database_name or "test"
                 mongo_db = engine[db_name]
                 
-                # Collection inference
-                collection_name = self._infer_mongodb_collection(question, schema)
-                if not collection_name:
-                    raise ValueError("Could not determine which collection to query based on your question.")
+                # Use collection and pipeline from the validated LLM response
+                collection_name = validated_query.get("collection")
+                pipeline = validated_query.get("pipeline")
                 
-                cursor = mongo_db[collection_name].aggregate(validated_query)
+                if not collection_name:
+                    raise ValueError("No collection was specified for the query.")
+                
+                cursor = mongo_db[collection_name].aggregate(pipeline)
                 result = []
                 for doc in cursor:
-                    if "_id" in doc:
-                        doc["_id"] = str(doc["_id"])
-                    result.append(doc)
-                final_query_str = f"db.{collection_name}.aggregate({json.dumps(validated_query)})"
+                    # Clean up all fields for JSON serialization
+                    clean_doc = {}
+                    for k, v in doc.items():
+                        if isinstance(v, ObjectId) or (hasattr(v, '__str__') and 'ObjectId' in str(type(v))):
+                            clean_doc[k] = str(v)
+                        elif isinstance(v, datetime):
+                            clean_doc[k] = v.isoformat()
+                        else:
+                            clean_doc[k] = v
+                    result.append(clean_doc)
+                final_query_str = f"db.{collection_name}.aggregate({json.dumps(pipeline, default=str)})"
             else:
                 # SQL Execution logic
                 from sqlalchemy import text
@@ -184,7 +195,7 @@ class QueryService:
                 execution_time = f"{time.time() - start_time:.2f}s"
                 return {
                     "answer": [],
-                    "sql": validated_query,
+                    "sql": str(validated_query),
                     "error": str(repair_error),
                     "cache_hit": False,
                     "execution_time": execution_time
@@ -193,6 +204,24 @@ class QueryService:
         # 7. Store in Cache
         self.cache_service.cache_result(tenant_id, normalized_cache_key, result)
 
+        # 8. Store in Session History (Database)
+        if db:
+            from app.models import QueryHistory
+            try:
+                history_entry = QueryHistory(
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    question=question,
+                    query_text=final_query_str,
+                    db_type=db_type
+                )
+                db.add(history_entry)
+                db.commit()
+                logger.info(f"📜 History saved to DB for tenant {tenant_id}")
+            except Exception as e:
+                db.rollback()
+                logger.error(f"Failed to save history to DB: {e}")
+
         execution_time = f"{time.time() - start_time:.2f}s"
         return {
             "answer": result,
@@ -200,15 +229,3 @@ class QueryService:
             "cache_hit": False,
             "execution_time": execution_time
         }
-
-    def _infer_mongodb_collection(self, question: str, schema: dict) -> Optional[str]:
-        """Simple keyword based collection inference"""
-        question_lower = question.lower()
-        collections = list(schema.get("tables", {}).keys())
-        for coll in collections:
-            coll_lower = coll.lower()
-            if coll_lower in question_lower or coll_lower.rstrip("s") in question_lower:
-                return coll
-        if len(collections) > 0:
-            return collections[0]
-        return None

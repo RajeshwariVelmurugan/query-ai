@@ -97,11 +97,19 @@ async def check_tenant_health(
         raise HTTPException(status_code=404, detail="Tenant not connected or access denied")
     
     try:
-        from sqlalchemy import text
-        with engine.connect() as conn:
-            start = time.time()
-            conn.execute(text("SELECT 1"))
-            latency = round((time.time() - start) * 1000, 2)
+        import pymongo
+        start = time.time()
+        
+        if isinstance(engine, pymongo.MongoClient):
+            # MongoDB ping
+            engine.admin.command('ping')
+        else:
+            # SQL ping
+            from sqlalchemy import text
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+                
+        latency = round((time.time() - start) * 1000, 2)
             
         return {
             "status": "connected",

@@ -15,16 +15,16 @@ class PromptBuilder:
 You generate MongoDB aggregation pipelines for a MongoDB database.
 
 STRICT RULES:
-- Generate ONLY a JSON array representing the aggregation pipeline.
-- Example: [{{ "$match": {{ "status": "A" }} }}, {{ "$group": {{ "_id": "$cust_id", "total": {{ "$sum": "$amount" }} }} }}]
-- Do NOT include 'db.collection.aggregate(' or anything outside the array.
+- Return ONLY a JSON object with two keys: "collection" and "pipeline".
+- "collection": The name of the collection to query.
+- "pipeline": The array representing the aggregation stages.
+- Example: {{ "collection": "users", "pipeline": [{{ "$match": {{ "status": "A" }} }}] }}
 - Use ONLY collections and fields listed in the schema.
 - IMPORTANT: Fields are already available in the collection. Do NOT use $lookup to join a collection with itself.
 - Only use $lookup if the required information is strictly in a DIFFERENT collection.
-- Return ONLY the raw JSON array.
-- No explanations.
-- No markdown.
-- If required collections or fields are missing, return: []
+- Exclude the "_id" field from results unless explicitly asked for internal IDs.
+- Return ONLY the raw JSON object. No markdown, no explanations.
+- If required info is missing, return: {{ "collection": "", "pipeline": [] }}
 
 DATABASE SCHEMA:
 {schema_text}

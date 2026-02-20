@@ -26,8 +26,14 @@ class CleanupService:
             logger.info(f"Step 2/3: Removing schema...")
             self.schema_service.remove_schema(tenant_id)
             
-            logger.info(f"Step 3/3: Closing database connection...")
+            logger.info(f"Step 3/4: Closing database connection...")
             self.db_service.close_connection(tenant_id, user_id=user_id, db=db)
+            
+            logger.info(f"Step 4/4: Wiping query history...")
+            if db:
+                from app.models import QueryHistory
+                db.query(QueryHistory).filter(QueryHistory.tenant_id == tenant_id).delete()
+                db.commit()
             
             logger.info(f"✅ Complete cleanup finished for tenant {tenant_id}")
             return True

@@ -2,7 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
-.venv
+.venv/
 venv/
 ENV/
 *.db
@@ -18,8 +18,8 @@ dist/
 dist-ssr/
 build/
 out/
-.vercel
-.turbo
+.vercel/
+.turbo/
 *.local
 npm-debug.log*
 yarn-debug.log*
@@ -47,4 +47,6 @@ NLP-SQL-BACKEND/NLP-SQL-BACKEND/.env
 NLP-SQL-FRONTEND/.env
 verify_mongodb_nlp.py
 seed_mongodb.py
+test_json_repair.py
+system_data.db
 test_mongo_tenant.db

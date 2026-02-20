@@ -33,3 +33,16 @@ class TenantConnection(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     owner = relationship("User", back_populates="connections")
+
+class QueryHistory(Base):
+    __tablename__ = "query_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(String, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    question = Column(String)
+    query_text = Column(String) # Stores SQL or MQL
+    db_type = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
